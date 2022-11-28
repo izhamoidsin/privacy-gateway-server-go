@@ -30,24 +30,28 @@ const (
 	defaultMetadataEndpoint = "/gateway-metadata"
 	defaultHealthEndpoint   = "/health"
 
+	// service name to be reported as a label to metrics subsystem
+	defaultMetricsServiceName = "ohttp_gateway"
+
 	// Environment variables
-	gatewayEndpointEnvVariable         = "GATEWAY_ENDPOINT"
-	configEndpointEnvVariable          = "CONFIG_ENDPOINT"
-	echoEndpointEnvVariable            = "ECHO_ENDPOINT"
-	metadataEndpointEnvVariable        = "METADATA_ENDPOINT"
-	healthEndpointEnvVariable          = "HEALTH_ENDPOINT"
-	configurationIdEnvironmentVariable = "CONFIGURATION_ID"
-	secretSeedEnvironmentVariable      = "SEED_SECRET_KEY"
-	targetOriginAllowList              = "ALLOWED_TARGET_ORIGINS"
-	customRequestEncodingType          = "CUSTOM_REQUEST_TYPE"
-	customResponseEncodingType         = "CUSTOM_RESPONSE_TYPE"
-	certificateEnvironmentVariable     = "CERT"
-	keyEnvironmentVariable             = "KEY"
-	statsdHostVariable                 = "MONITORING_STATSD_HOST"
-	statsdPortVariable                 = "MONITORING_STATSD_PORT"
-	statsdTimeoutVariable              = "MONITORING_STATSD_TIMEOUT_MS"
-	gatewayDebugEnvironmentVariable    = "GATEWAY_DEBUG"
-	gatewayVerboseEnvironmentVariable  = "VERBOSE"
+	gatewayEndpointEnvVariable            = "GATEWAY_ENDPOINT"
+	configEndpointEnvVariable             = "CONFIG_ENDPOINT"
+	echoEndpointEnvVariable               = "ECHO_ENDPOINT"
+	metadataEndpointEnvVariable           = "METADATA_ENDPOINT"
+	healthEndpointEnvVariable             = "HEALTH_ENDPOINT"
+	configurationIdEnvironmentVariable    = "CONFIGURATION_ID"
+	secretSeedEnvironmentVariable         = "SEED_SECRET_KEY"
+	targetOriginAllowList                 = "ALLOWED_TARGET_ORIGINS"
+	customRequestEncodingType             = "CUSTOM_REQUEST_TYPE"
+	customResponseEncodingType            = "CUSTOM_RESPONSE_TYPE"
+	certificateEnvironmentVariable        = "CERT"
+	keyEnvironmentVariable                = "KEY"
+	statsdHostVariable                    = "MONITORING_STATSD_HOST"
+	statsdPortVariable                    = "MONITORING_STATSD_PORT"
+	statsdTimeoutVariable                 = "MONITORING_STATSD_TIMEOUT_MS"
+	gatewayDebugEnvironmentVariable       = "GATEWAY_DEBUG"
+	gatewayVerboseEnvironmentVariable     = "VERBOSE"
+	metricsServiceNameEnvironmentVariable = "METRICS_SERVICE_NAME"
 )
 
 type gatewayServer struct {
@@ -154,6 +158,8 @@ func main() {
 	debugResponse := getBoolEnv(gatewayDebugEnvironmentVariable, false)
 	verbose := getBoolEnv(gatewayVerboseEnvironmentVariable, false)
 
+	metricsServiceName := getStringEnv(metricsServiceNameEnvironmentVariable, defaultMetricsServiceName)
+
 	configID := uint8(getUintEnv(configurationIdEnvironmentVariable, 0))
 	config, err := ohttp.NewConfigFromSeed(configID, hpke.DHKEM_X25519, hpke.KDF_HKDF_SHA256, hpke.AEAD_AESGCM128, seed)
 	if err != nil {
@@ -224,8 +230,8 @@ func main() {
 	defer client.Close()
 
 	metricsFactory := &StatsDMetricsFactory{
-		serviceName: "ohttp_gateway",
-		metricsName: "ohttp_gateway_duration",
+		serviceName: metricsServiceName,
+		metricsName: fmt.Sprintf("%s_duration", metricsServiceName),
 		client:      client,
 	}
 
