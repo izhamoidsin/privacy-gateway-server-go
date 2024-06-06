@@ -269,6 +269,8 @@ func (h BinaryHTTPAppHandler) Handle(binaryRequest []byte, metrics Metrics) ([]b
 		return h.wrappedError(PayloadMarshallingError, metrics)
 	}
 
+	log.Printf("%s Handling inner request %s\n", req.Method, req.URL.Path)
+
 	resp, err := h.httpHandler.Handle(req, metrics)
 	if err != nil {
 		if err == GatewayTargetForbiddenError {
