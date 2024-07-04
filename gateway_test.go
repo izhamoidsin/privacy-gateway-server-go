@@ -617,3 +617,122 @@ func TestGatewayHandlerProtoHTTPRequestWithAllowedTarget(t *testing.T) {
 
 	testMetricsContainsResult(t, mustGetMetricsFactory(t, target), metricsEventGatewayRequest, metricsResultSuccess)
 }
+
+func CheckRequest(t *testing.T, httpRequest *http.Request) {
+	basicClient := &http.Client{}
+	resp, err := basicClient.Do(httpRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatal("Request did not succeed with 200 status code")
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(body) > 50 {
+		body = body[:50]
+	}
+	fmt.Println("Response:", string(body))
+}
+
+func GetConfig(t *testing.T) ([]byte, error) {
+	httpRequest, _ := http.NewRequest(http.MethodGet, "<<ohttp-configs URL>>", nil)
+	basic_client := &http.Client{}
+	resp, err := basic_client.Do(httpRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	return ioutil.ReadAll(resp.Body)
+}
+
+func PureRequest(t *testing.T) *http.Request {
+	jsonString := `<<JSON BODY>>`
+	jsonData := bytes.NewBuffer([]byte(jsonString))
+	httpRequest, err := http.NewRequest(http.MethodPost, "<<URL>>", jsonData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	httpRequest.Header.Set("<<HEADER NAME>>", "<<HEADER VALUE>>")
+	return httpRequest
+}
+
+func TestSerializeAndEncryptRealRequest(t *testing.T) {
+	networkClient := &http.Client{}
+
+	configBytes, err := GetConfig(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := ohttp.UnmarshalPublicConfig(configBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := ohttp.NewDefaultClient(config)
+	httpRequest := PureRequest(t)
+	CheckRequest(t, httpRequest)
+	binaryRequest := ohttp.BinaryRequest(*httpRequest)
+	encodedRequest, err := binaryRequest.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, context, err := client.EncapsulateRequest(encodedRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reqEnc := req.Marshal()
+	reqEncMarshalled := bytes.NewReader(reqEnc)
+
+	// Uncomment for printing the encrypted and marshalled request in base64 format
+
+	//dataOfInterest, _ := io.ReadAll(reqEncMarshalled)
+	//encodedDataOfInterest := base64.StdEncoding.EncodeToString(dataOfInterest)
+	//fmt.Println(encodedDataOfInterest)
+	//return
+
+	request, err := http.NewRequest(http.MethodPost, "<<OHTTP relay/gateway>>", reqEncMarshalled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Add("Content-Type", "message/ohttp-req")
+
+	rr, err := networkClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bodyBytes, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	encapResp, err := ohttp.UnmarshalEncapsulatedResponse(bodyBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	binaryResp, err := context.DecapsulateResponse(encapResp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := ohttp.UnmarshalBinaryResponse(binaryResp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatal(fmt.Errorf("Encapsulated result did not yield %d, got %d instead", http.StatusOK, resp.StatusCode))
+	}
+
+	finalRespBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Response:", string(finalRespBody))
+}
