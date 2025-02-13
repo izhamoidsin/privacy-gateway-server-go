@@ -319,11 +319,17 @@ func (h FilteredHttpRequestHandler) Handle(req *http.Request, metrics Metrics) (
 			return nil, GatewayTargetForbiddenError
 		}
 	}
-	body, _ := ioutil.ReadAll(req.Body)
-	log.Printf("Sending request %s %s %v %s", req.Method, req.URL.String(), req.Header, string(body))
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // Restore body for further use
-
+	if h.logForbiddenErrors {
+		body, _ := ioutil.ReadAll(req.Body)
+		log.Printf("Sending request %s %s %v %s", req.Method, req.URL.String(), req.Header, string(body))
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // Restore body for further use
+	}
 	resp, err := h.client.Do(req)
+	if h.logForbiddenErrors {
+		body, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("Response for %s %s is %s %s", req.Method, req.URL.String(), resp.Status, string(body))
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(body)) // Restore body for further use
+	}
 	if err != nil {
 		metrics.Fire(metricsResultTargetRequestFailed)
 		return nil, err

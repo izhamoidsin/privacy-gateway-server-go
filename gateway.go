@@ -52,7 +52,7 @@ func (s *gatewayResource) httpError(w http.ResponseWriter, status int, debugMess
 
 func (s *gatewayResource) gatewayHandler(w http.ResponseWriter, r *http.Request) {
 	if s.verbose {
-		log.Printf("%s Handling %s\n", r.Method, r.URL.Path)
+		// log.Printf("%s Handling %s\n", r.Method, r.URL.Path)
 	}
 
 	metrics := s.metricsFactory.Create(metricsEventGatewayRequest)
@@ -111,7 +111,7 @@ func (s *gatewayResource) gatewayHandler(w http.ResponseWriter, r *http.Request)
 
 func (s *gatewayResource) legacyConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if s.verbose {
-		log.Printf("%s Handling %s\n", r.Method, r.URL.Path)
+		// log.Printf("%s Handling %s\n", r.Method, r.URL.Path)
 	}
 	metrics := s.metricsFactory.Create(metricsEventConfigsRequest)
 
@@ -135,7 +135,7 @@ func (s *gatewayResource) legacyConfigHandler(w http.ResponseWriter, r *http.Req
 
 func (s *gatewayResource) configHandler(w http.ResponseWriter, r *http.Request) {
 	if s.verbose {
-		log.Printf("%s Handling %s\n", r.Method, r.URL.Path)
+		// log.Printf("%s Handling %s\n", r.Method, r.URL.Path)
 	}
 	metrics := s.metricsFactory.Create(metricsEventConfigsRequest)
 
